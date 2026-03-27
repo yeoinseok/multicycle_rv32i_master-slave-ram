@@ -1,8 +1,11 @@
 `timescale 1ns / 1ps
 
 module rv32I_mcu (
-    input clk,
-    input rst
+    input         clk,
+    input         rst,
+    input  [ 7:0] GPI,
+    output [ 7:0] GPO,
+    inout  [15:0] GPIO
 );
 
     logic [2:0] o_funct3;
@@ -23,7 +26,7 @@ module rv32I_mcu (
 
     APB_Master U_APB_MASTER (
         //BUS global signal
-        .PCLK(clk),
+        .PCLK  (clk),
         .PRESET(rst),
 
 
@@ -42,12 +45,12 @@ module rv32I_mcu (
         .PWDATA (PWDATA),
         .PWRITE (PWRITE),
         .PENABLE(PENABLE),
-        .PSEL0  (PSEL0),  //RAM
-        .PSEL1  (PSEL1),  //GPO
-        .PSEL2  (PSEL2),  //GPI
-        .PSEL3  (PSEL3),  //GPIO
-        .PSEL4  (PSEL4),  //FND
-        .PSEL5  (PSEL5),  //UART
+        .PSEL0  (PSEL0),    //RAM
+        .PSEL1  (PSEL1),    //GPO
+        .PSEL2  (PSEL2),    //GPI
+        .PSEL3  (PSEL3),    //GPIO
+        .PSEL4  (PSEL4),    //FND
+        .PSEL5  (PSEL5),    //UART
 
 
 
@@ -74,8 +77,45 @@ module rv32I_mcu (
         .PRDATA(PRDATA0),  //RAM
         .PREADY(PREADY0)   //RAM
     );
-    // data_mem U_DATA_MEM (
-    //     .*,
-    //     .i_funct3(o_funct3)
-    // );
+
+    APB_GPO U_APB_GPO (
+        .PCLK   (clk),
+        .PRESET (rst),
+        .PADDR  (PADDR),
+        .PWDATA (PWDATA),
+        .PENABLE(PENABLE),
+        .PWRITE (PWRITE),
+        .PSEL   (PSEL1),
+        .PRDATA (PRDATA1),
+        .PREADY (PREADY1),
+        .GPO_OUT(GPO)
+    );
+
+    APB_GPI U_APB_GPI (
+
+        .PCLK   (clk),
+        .PRESET (rst),
+        .PADDR  (PADDR),
+        .PWDATA (PWDATA),
+        .PENABLE(PENABLE),
+        .PWRITE (PWRITE),
+        .PSEL   (PSEL2),
+        .GPI    (GPI),
+        .PRDATA (PRDATA2),
+        .PREADY (PREADY2)
+    );
+
+    APB_GPIO U_APB_GPIO (
+
+        .PCLK   (clk),
+        .PRESET (rst),
+        .PADDR  (PADDR),
+        .PWDATA (PWDATA),
+        .PENABLE(PENABLE),
+        .PWRITE (PWRITE),
+        .PSEL   (PSEL3),
+        .PRDATA (PRDATA3),
+        .PREADY (PREADY3),
+        .GPIO   (GPIO)
+    );
 endmodule

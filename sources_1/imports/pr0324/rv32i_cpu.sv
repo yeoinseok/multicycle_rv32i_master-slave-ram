@@ -58,10 +58,72 @@ module control_unit (
     output logic       dre
 
 );
+
+      // =========================================================================
+    // [DEBUG] Waveform 디버깅을 위한 Opcode Enum 선언 및 캐스팅
+    // =========================================================================
+    typedef enum logic [6:0] {
+        DBG_R_TYPE  = `R_TYPE,
+        DBG_I_TYPE  = `I_TYPE,
+        DBG_S_TYPE  = `S_TYPE,
+        DBG_B_TYPE  = `B_TYPE,
+        DBG_IL_TYPE = `IL_TYPE,
+        DBG_UL_TYPE = `UL_TYPE,
+        DBG_UA_TYPE = `UA_TYPE,
+        DBG_J_TYPE  = `J_TYPE,
+        DBG_JL_TYPE = `JL_TYPE
+    } opcode_dbg_e;
+
+    // 파형 뷰어에 띄울 디버그용 시그널
+    opcode_dbg_e dbg_opcode;
+
+    // 입력 opcode를 enum으로 캐스팅하여 연결
+    assign dbg_opcode = opcode_dbg_e'(opcode);
+    // =========================================================================
+    // =========================================================================
+    // [DEBUG] Waveform 디버깅을 위한 ALU Control Enum 선언 및 캐스팅
+    // =========================================================================
+    typedef enum logic [3:0] {
+        // 일반 연산 (R-type, I-type 등)
+        DBG_ADD  = `ADD,
+        DBG_SUB  = `SUB,
+        DBG_SLL  = `SLL,
+        DBG_SLT  = `SLT,
+        DBG_SLTU = `SLTU,
+        DBG_XOR  = `XOR,
+        DBG_SRL  = `SRL,
+        DBG_SRA  = `SRA,
+        DBG_OR   = `OR,
+        DBG_AND  = `AND
+    } alu_ctrl_dbg_e;
+    typedef enum logic [3:0] {
+        // 분기 연산 (B-type) - 매크로 정의에 따라 값이 겹칠 수 있으므로 확인 필요
+        DBG_BEQ  = `BEQ,
+        DBG_BNE  = `BNE,
+        DBG_BLT  = `BLT,
+        DBG_BGE  = `BGE,
+        DBG_BLTU = `BLTU,
+        DBG_BGEU = `BGEU
+    } alu_ctrl_dbg_btype_e;
+
+    // 파형 뷰어에 띄울 디버그용 시그널
+    alu_ctrl_dbg_e dbg_alu_ctrl;
+    alu_ctrl_dbg_btype_e dbg_alu_ctrl_btype;
+    // 입력 alu_control을 enum으로 캐스팅하여 연결
+    assign dbg_alu_ctrl = alu_ctrl_dbg_e'(alu_control);
+    assign dbg_alu_ctrl_btype = alu_ctrl_dbg_btype_e'(alu_control);
+    // =========================================================================
+
+
+
+
+
+    
+
     // Control unit Multi cycle Stage
     typedef enum {
         FETCH,
-        DECOCE,
+        DECODE,
         EXECUTE,
         EXE_R,
         EXE_I,
@@ -93,9 +155,9 @@ module control_unit (
         n_state = c_state;
         case (c_state)
             FETCH: begin
-                n_state = DECOCE;
+                n_state = DECODE;
             end
-            DECOCE: begin
+            DECODE: begin
                 n_state = EXECUTE;
             end
             EXECUTE: begin
@@ -148,7 +210,7 @@ module control_unit (
             FETCH: begin
                 pc_en = 1'b1;
             end
-            DECOCE: begin
+            DECODE: begin
             end
             EXECUTE: begin
                 case (opcode)
@@ -197,12 +259,12 @@ module control_unit (
             MEM: begin
                 o_funct3 = funct3;
                 if (opcode == `S_TYPE) dwe = 1'b1;
+                else dre      = 1'b1;
             end
             WB: begin
                 // IL type
                 rf_we    = 1'b1;  // next state FETCH
                 rfwd_src = 3'b001;
-                dre      = 1'b1;
             end
         endcase
     end

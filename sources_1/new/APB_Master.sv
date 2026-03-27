@@ -53,47 +53,41 @@ module APB_Master (
         ACCESS
     } apb_state_e;
     apb_state_e c_state, n_state;
+    logic [31:0] temp_addr, temp_addr_next, temp_wdata, temp_wdata_next;
+    logic decode_en, temp_write, temp_write_next;
 
-    logic [31:0] PADDR_next, PWDATA_next;
-    logic decode_en, PWRITE_next;
 
     always_ff @(posedge PCLK, posedge PRESET) begin
         if (PRESET) begin
             c_state <= IDLE;
-            PADDR   <= 32'd0;
-            PWDATA  <= 32'd0;
-            PWRITE  <= 1'b0;
+            temp_addr   <= 32'd0;
+            temp_wdata  <= 32'd0;
+            temp_write  <= 1'b0;
         end else begin
-            c_state <= n_state;
-            PADDR   <= PADDR_next;
-            PWDATA  <= PWDATA_next;
-            PWRITE  <= PWRITE_next;
+            c_state    <= n_state;
+            temp_addr  <= temp_addr_next;
+            temp_wdata <= temp_wdata_next;
+            temp_write <= temp_write_next;
         end
     end
 
 
     always_comb begin
-        decode_en   = 1'b0;
-        PENABLE     = 1'b0;
-        PADDR_next  = PADDR;
-        PWDATA_next = PWDATA;
-        PWRITE_next = PWRITE;
-        n_state     = c_state;
+        n_state         = c_state;
+        decode_en       = 1'b0;
+        PENABLE         = 1'b0;
+        temp_addr_next  = temp_addr;
+        temp_wdata_next = temp_wdata;
+        temp_write_next = temp_write;
+        PADDR           = temp_addr;
+        PWDATA          = temp_wdata;
+        PWRITE          = temp_write;
         case (c_state)
             IDLE: begin
-                decode_en   = 0;
-                PENABLE     = 0;
-                PADDR_next  = 32'd0;
-                PWDATA_next = 32'd0;
-                PWRITE_next = 1'b0;
                 if (WREQ | RREQ) begin
-                    PADDR_next  = addr;
-                    PWDATA_next = Wdata;
-                    if (WREQ) begin
-                        PWRITE_next = 1'b1;
-                    end else begin
-                        PWRITE_next = 1'b0;
-                    end
+                    temp_addr_next = addr;
+                    temp_wdata_next = Wdata;
+                    temp_write_next = WREQ;
                     n_state = SETUP;
                 end
             end
@@ -107,8 +101,9 @@ module APB_Master (
             ACCESS: begin
                 decode_en = 1;
                 PENABLE   = 1;
-                //if (PREADY0|PREADY1|PREADY2|PREADY3|PREADY4|PREADY5) begin
+
                 if (Ready) begin
+                    temp_write_next = 1'b0;
                     n_state = IDLE;
                 end
             end
@@ -146,14 +141,14 @@ endmodule
 
 
 module addr_decoder (
-    input en,
-    input [31:0] addr,
-    output logic    psel0,
-    output logic    psel1,
-    output logic    psel2,
-    output logic    psel3,
-    output logic    psel4,
-    output logic    psel5
+    input               en,
+    input        [31:0] addr,
+    output logic        psel0,
+    output logic        psel1,
+    output logic        psel2,
+    output logic        psel3,
+    output logic        psel4,
+    output logic        psel5
 );
 
 
@@ -238,10 +233,12 @@ module apb_mux (
                         Rdata = PRDATA5;
                         Ready = PREADY5;
                     end
-                    default: begin
-
-                    end
                 endcase
+            end
+            default: begin
+
+                Rdata = 32'hxxxx_xxxx;
+                Ready = 1'bx;
             end
         endcase
     end
@@ -249,84 +246,3 @@ module apb_mux (
 endmodule
 
 
-
-// localparam IDLE = 2'b00;
-// localparam SETUP = 2'b01;
-// localparam ACCESS = 2'b10;
-
-// logic [1:0] c_state, n_state;
-
-// always_ff @(posedge PCLK, negedge PRESETn) begin
-//     if (!PRESETn) begin
-//         c_state <= IDLE;
-//     end else begin
-//         c_state <= n_state;
-//     end
-// end
-
-// always_comb begin
-//     case (c_state)
-//         IDLE: begin
-//             if (transfer) begin
-//                 n_state = SETUP;
-//             end else begin
-//                 n_state = IDLE;
-//             end
-//         end
-
-//         SETUP: begin
-//             n_state = ACCESS;
-//         end
-
-//         ACCESS: begin
-//             if (PREADY) begin
-//                 if (transfer) begin
-//                     n_state = SETUP;
-//                 end else begin
-//                     n_state = IDLE;
-//                 end
-//             end else begin
-//                 n_state = ACCESS;
-//             end
-//         end
-
-//         default: n_state = IDLE;
-//     endcase
-// end
-
-
-// always_ff @(posedge PCLK, negedge PRESETn) begin
-//     if (!PRESETn) begin
-//         PWRITE  <= 1'b0;
-//         PSEL    <= 1'b0;
-//         PENABLE <= 1'b0;
-//         PADDR   <= 32'h0;
-//         PWDATA  <= 32'h0;
-//     end else begin
-//         case (c_state)
-//             IDLE: begin
-//                 PADDR   <= 32'h0;
-//                 PWRITE  <= 1'b0;
-//                 PSEL    <= 1'b0;
-//                 PENABLE <= 1'b0;
-//                 PWDATA  <= 32'h0;
-//             end
-
-//             SETUP: begin
-//                 PADDR   <= 32'h1;
-//                 PWRITE  <= 1'b1;
-//                 PSEL    <= 1'b1;
-//                 PENABLE <= 1'b0;
-//                 PWDATA  <= 32'h1;
-//             end
-
-//             ACCESS: begin
-//                 PADDR   <= 32'h1;
-//                 PWRITE  <= 1'b1;
-//                 PSEL    <= 1'b1;
-//                 PENABLE <= 1'b1;
-//                 PWDATA  <= 32'h1;
-//             end
-//         endcase
-//     end
-// end
